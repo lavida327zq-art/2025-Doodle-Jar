@@ -3,28 +3,20 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>2025 年度回顾</title>
+    <title>2025 Doodle Jar</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* Base Styles */
         body {
             font-family: 'Patrick Hand', 'Ma Shan Zheng', cursive, sans-serif;
+            margin: 0;
             overflow-x: hidden;
-        }
-
-        /* Custom Grid Background */
-        .bg-grid-paper {
             background-color: #fdfdfd;
-            background-image: 
-                linear-gradient(#a5b4fc 1px, transparent 1px), 
-                linear-gradient(90deg, #a5b4fc 1px, transparent 1px);
-            background-size: 24px 24px;
         }
-
-        /* Utility to hide scrollbar */
+        /* Custom Scrollbar */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -32,59 +24,51 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-
-        /* SVG Filters Class */
-        .doodle-filter {
-            filter: url(#squiggle);
+        /* Paper Grid Background */
+        .bg-grid-paper {
+            background-image: 
+                linear-gradient(#a5b4fc 1px, transparent 1px), 
+                linear-gradient(90deg, #a5b4fc 1px, transparent 1px);
+            background-size: 24px 24px;
         }
-
-        /* Animations */
+        /* Keyframes */
         @keyframes float {
             0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
             50% { transform: translateY(-5px) rotate(calc(var(--r, 0deg) + 5deg)); }
         }
-
         .star-float {
             animation: float 3s infinite ease-in-out;
         }
-
         @keyframes popIn {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+            0% { opacity: 0; transform: scale(0.5) rotate(var(--r)); }
+            100% { opacity: 1; transform: scale(1) rotate(var(--r)); }
         }
-
         .animate-pop-in {
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-
         @keyframes stampBounce {
             0% { transform: scale(2) rotate(12deg); opacity: 0; }
-            100% { transform: scale(1) rotate(12deg); opacity: 1; }
+            100% { transform: scale(1) rotate(12deg); opacity: 0.8; }
         }
-
-        .stamp-appear {
+        .stamp-anim {
             animation: stampBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
-            opacity: 0; /* Start hidden */
         }
+        /* Utility to hide/show */
+        .hidden { display: none !important; }
     </style>
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
-    "path": "https://esm.sh/path@^0.12.7",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
-<body class="bg-grid-paper min-h-screen flex flex-col text-gray-800">
+<body class="bg-grid-paper min-h-screen text-gray-800 selection:bg-yellow-200 flex flex-col items-center">
 
-    <!-- SVG Filters Definition -->
+    <!-- Global SVG Filter -->
     <svg class="absolute w-0 h-0 pointer-events-none">
         <defs>
             <filter id="squiggle">
@@ -94,344 +78,432 @@
         </defs>
     </svg>
 
+    <!-- Audio Elements -->
+    <audio id="bgm" loop src="bgm.mp3"></audio>
+    <audio id="sfx" src="pop.mp3"></audio>
+
+    <!-- Music Control -->
+    <button id="music-btn" class="fixed top-4 right-4 z-50 p-3 rounded-full bg-white shadow-md border-2 border-gray-700 hover:scale-110 active:scale-95 transition-transform duration-200" style="filter: url(#squiggle)" aria-label="Toggle Background Music">
+        <span class="text-2xl" id="music-icon">🔇</span>
+    </button>
+
     <!-- Header & Jar Section -->
-    <div class="shrink-0 pt-8 pb-4 flex flex-col items-center justify-center relative z-20 bg-gradient-to-b from-white/80 to-transparent">
+    <div class="w-full shrink-0 pt-8 pb-4 flex flex-col items-center justify-center relative z-20 bg-gradient-to-b from-[#fdfdfd] to-transparent">
         <div class="text-center mb-6">
-            <h1 class="text-5xl md:text-7xl font-bold text-gray-700 tracking-wide doodle-filter" style="transform: rotate(-2deg);">
+            <h1 class="text-5xl md:text-7xl font-bold text-gray-700 tracking-wide rotate-[-2deg]" style="filter: url(#squiggle)">
                 2025 年度回顾
             </h1>
-            <p id="header-subtitle" class="mt-2 text-lg text-gray-500 font-hand">
-                有些日子值得被折叠珍藏
-            </p>
+            <p class="mt-2 text-lg text-gray-500 font-hand">有些日子值得被折叠珍藏</p>
         </div>
 
-        <div class="relative">
-            <!-- Jar Container -->
-            <div id="jar" class="relative w-56 h-72 mx-auto cursor-pointer group select-none transition-transform active:scale-95">
-                <svg viewBox="0 0 200 260" class="w-full h-full drop-shadow-md transition-transform duration-300 group-hover:scale-105 doodle-filter">
-                    <!-- Jar Lid -->
-                    <path d="M50,20 L50,10 L150,10 L150,20 Q160,20 160,30 L160,40 L40,40 L40,30 Q40,20 50,20 Z" fill="none" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <!-- Jar Container -->
+        <div class="flex flex-col items-center">
+            <div id="jar-container" class="relative w-56 h-72 cursor-pointer group select-none transition-transform active:scale-95">
+                <!-- SVG Jar -->
+                <svg viewBox="0 0 200 260" class="w-full h-full drop-shadow-md transition-transform duration-300 group-hover:scale-105" style="filter: url(#squiggle)">
+                    <!-- Lid -->
+                    <path d="M50,20 L50,10 L150,10 L150,20 Q160,20 160,30 L160,40 L40,40 L40,30 Q40,20 50,20 Z" fill="none" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                     <line x1="40" y1="25" x2="160" y2="25" stroke="#4b5563" strokeWidth="2" />
-                    <!-- Jar Body -->
-                    <path d="M45,40 L45,220 Q45,250 75,250 L125,250 Q155,250 155,220 L155,40" fill="rgba(255, 255, 255, 0.4)" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <!-- Reflection Lines -->
+                    <!-- Body -->
+                    <path d="M45,40 L45,220 Q45,250 75,250 L125,250 Q155,250 155,220 L155,40" fill="rgba(255, 255, 255, 0.4)" stroke="#4b5563" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    <!-- Reflections -->
                     <path d="M140,60 Q145,100 140,140" fill="none" stroke="rgba(75, 85, 99, 0.3)" strokeWidth="2" strokeLinecap="round" />
                     <path d="M55,220 Q50,230 65,235" fill="none" stroke="rgba(75, 85, 99, 0.3)" strokeWidth="2" strokeLinecap="round" />
                 </svg>
 
-                <!-- Stars Inside Jar -->
+                <!-- Stars Inside -->
                 <div id="jar-stars" class="absolute inset-0 top-10 left-4 right-4 bottom-4 overflow-hidden pointer-events-none">
-                    <!-- Stars will be injected here by JS -->
+                    <!-- Stars injected via JS -->
                 </div>
 
-                <!-- Label on Jar -->
+                <!-- Label -->
                 <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                    <div class="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm border border-gray-400 doodle-filter" style="transform: rotate(-2deg);">
-                        <span id="remaining-count" class="text-2xl font-bold text-gray-700">40</span>
+                    <div class="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm border border-gray-400 rotate-[-2deg]" style="filter: url(#squiggle)">
+                        <span id="stars-count" class="text-2xl font-bold text-gray-700 block">0</span>
                         <span class="block text-xs text-gray-500 uppercase tracking-widest">Left</span>
                     </div>
                 </div>
             </div>
-            <!-- Shadow under Jar -->
-            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 w-48 h-4 bg-gray-300/30 rounded-full blur-sm -z-10"></div>
+            
+            <!-- Shadow -->
+            <div class="w-48 h-4 bg-gray-300/30 rounded-full blur-sm -mt-4 -z-10"></div>
+            
+            <!-- Hint Text -->
+            <p id="hint-text" class="mt-6 text-gray-500 font-hand animate-pulse">
+                ✨ 点击瓶子里的星星填写年度回顾便签吧~
+            </p>
         </div>
     </div>
 
     <!-- Wall Section -->
-    <div class="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full">
-        <div class="max-w-7xl mx-auto px-4 py-8 pb-32">
-            <div id="empty-wall-msg" class="text-center text-gray-300 text-xl mt-12 font-hand" style="transform: rotate(1deg);">
+    <div class="w-full relative z-10 pb-32">
+        <div id="wall-container" class="max-w-7xl mx-auto px-4 py-8 flex flex-wrap justify-center items-start gap-6 md:gap-8">
+            <!-- Notes injected via JS -->
+            <div id="empty-wall-msg" class="text-center text-gray-300 text-xl mt-12 font-hand rotate-1 select-none hidden">
                 回忆墙空空如也，点击星星开始记录吧。
-            </div>
-            <div id="wall" class="flex flex-wrap justify-center gap-6 md:gap-8">
-                <!-- Pinned Notes will be injected here -->
             </div>
         </div>
     </div>
 
-    <!-- Modal Overlay -->
-    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
-        <div id="modal-backdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
-        
-        <div id="modal-content" class="relative z-10 w-full max-w-sm aspect-square bg-yellow-100 shadow-xl flex flex-col p-8 transition-all duration-300 transform scale-90 opacity-0 doodle-filter" style="border-radius: 2px 2px 25px 2px;">
-            <!-- Tape Graphic -->
-            <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/50 doodle-filter" style="transform: translateX(-50%) rotate(-2deg);"></div>
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm transition-opacity duration-300 hidden">
+        <div id="modal-content" class="relative z-10 w-full max-w-sm aspect-square shadow-xl flex flex-col p-8 transition-transform" style="border-radius: 2px 2px 25px 2px; filter: url(#squiggle); transform-origin: center;">
+            
+            <!-- Tape -->
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/50 transform -rotate-2" style="filter: url(#squiggle)"></div>
 
-            <!-- Question -->
             <div class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                <h2 id="modal-question" class="text-2xl text-gray-800 font-bold leading-relaxed min-h-[4rem]">
-                    <!-- Question text -->
-                </h2>
+                <div class="relative w-full">
+                    <h2 id="modal-question" class="text-2xl font-bold leading-relaxed min-h-[4rem]"></h2>
+                </div>
 
-                <!-- Input -->
                 <div class="w-full space-y-2">
-                    <input type="text" id="modal-input" placeholder="Write your thought..." class="w-full bg-transparent border-b-2 border-gray-400 focus:border-blue-500 outline-none text-xl text-center pb-1 font-hand placeholder:text-gray-400/70" autocomplete="off" />
+                    <input id="modal-input" type="text" placeholder="Write your thought..." class="w-full bg-transparent border-b-2 border-gray-400 focus:border-gray-600 outline-none text-xl text-center pb-1 font-hand placeholder:text-gray-400/70" autocomplete="off" />
                 </div>
             </div>
 
-            <!-- Action Button -->
-            <div class="mt-4 text-center">
-                <button id="btn-pin" disabled class="doodle-filter text-lg font-bold px-6 py-2 border-2 border-gray-700 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed">
-                    Pin It
-                </button>
+            <div class="mt-4 text-center space-x-4">
+                <button id="modal-cancel" class="text-lg font-bold px-4 py-2 text-gray-500 hover:text-gray-700 font-hand">Cancel</button>
+                <button id="modal-submit" disabled class="text-lg font-bold px-6 py-2 border-2 border-gray-700 rounded-full transition-all transform hover:scale-105 active:scale-95 border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed" style="filter: url(#squiggle)">Pin It</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- DATA ---
-        // Base questions (10), repeated to make 40 as requested
-        const BASE_QUESTIONS = [
-            "你今年做了哪些之前从未做过的事？",
-            "你有没有遵守年初时和自己许下的约定？",
-            "你身边有人生孩子了吗？",
-            "你身边有人去世了吗？",
-            "你去了哪些城市/州/国家？",
-            "明年你想要获得哪些你今年没有的东西？",
-            "今年的哪个或哪些日子会铭刻在你的记忆中，为什么？",
-            "你今年最大的成就是什么？",
-            "你今年最大的失败是什么？",
-            "你今年还遇到过哪些困难？"
+        // --- Constants & Data ---
+        const INITIAL_QUESTIONS = [
+          "你今年做了哪些之前从未做过的事？", "你有没有遵守年初时和自己许下的约定？", "你身边有人生孩子了吗？",
+          "你身边有人去世了吗？", "你去了哪些城市/州/国家？", "明年你想要获得哪些你今年没有的东西？",
+          "今年的哪个或哪些日子会铭刻在你的记忆中，为什么？", "你今年最大的成就是什么？", "你今年最大的失败是什么？",
+          "你今年还遇到过哪些困难？", "你今年是否生过病或受过伤？", "你今年买过的最好的东西是什么？",
+          "谁的行为值得去表扬？", "谁的行为令你感到震惊？", "你大部分的钱都花到哪里去了？",
+          "有什么事让你感到超级、超级、超级兴奋？", "哪首歌会永远让你想起这一年？", "与去年的这个时候相比，你是：感到更快乐还是更悲伤了？",
+          "你希望自己能做得更多的是什么？", "你希望自己能做得更少的是什么？", "你是如何度过节假日的？",
+          "你今年坠入爱河了吗？", "你是否有讨厌某个你去年此时不觉得讨厌的人呢？", "你最喜欢的电视节目是什么？",
+          "你读过最好的一本书是什么？", "你今年发现的最好听的一首歌是什么？", "你今年看过最喜欢的一部电影是什么？",
+          "你今年吃过最好吃的一顿饭是什么？", "有什么是你想要且得到了的？", "有什么是你想要却没有得到的？",
+          "你生日那天做了什么？", "有什么还未发生的事，如果发生了，会让你的这一年变得无比满足？",
+          "你会如何描述你今年的个人时尚风格？", "是什么让你保持理智？", "你最欣赏哪个名人 / 公众人物？",
+          "哪个政治问题最令你有感而发？", "你想念哪些人？", "在你新认识的人之中，谁是最好的？",
+          "今年你学到了什么宝贵的人生经验？", "能够总结你这一年的一句话是什么？"
         ];
         
-        // Generate 40 questions
-        let questions = [];
-        for (let i = 0; i < 4; i++) {
-            questions = questions.concat(BASE_QUESTIONS);
-        }
-
-        // --- STATE ---
-        let pinnedNotes = [];
-        let currentQuestion = null;
-        let isModalOpen = false;
-
-        // --- CONSTANTS ---
-        const STAMPS = ['rabbit', 'cat', 'bear', 'star', 'heart'];
-        const COLORS = ['bg-yellow-100', 'bg-blue-100', 'bg-rose-100', 'bg-green-100', 'bg-orange-100'];
-        const STAR_COLORS = ['#fde047', '#bef264', '#fcd34d', '#86efac', '#93c5fd'];
-
-        // --- DOM ELEMENTS ---
-        const jarEl = document.getElementById('jar');
-        const jarStarsContainer = document.getElementById('jar-stars');
-        const countEl = document.getElementById('remaining-count');
-        const wallEl = document.getElementById('wall');
-        const emptyWallMsg = document.getElementById('empty-wall-msg');
-        const headerSubtitle = document.getElementById('header-subtitle');
+        const STAMP_TYPES = ['rabbit', 'cat', 'bear', 'star', 'heart'];
         
-        const modalEl = document.getElementById('modal');
-        const modalBackdrop = document.getElementById('modal-backdrop');
-        const modalContent = document.getElementById('modal-content');
-        const modalQuestionEl = document.getElementById('modal-question');
-        const modalInput = document.getElementById('modal-input');
-        const btnPin = document.getElementById('btn-pin');
+        const STAMP_SVGS = {
+            rabbit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="15" r="5"/><path d="M9 11C9 11 7 5 9 3C11 1 11 5 11 8" strokeLinecap="round"/><path d="M15 11C15 11 17 5 15 3C13 1 13 5 13 8" strokeLinecap="round"/><circle cx="10.5" cy="14" r="0.5" fill="currentColor"/><circle cx="13.5" cy="14" r="0.5" fill="currentColor"/><path d="M11 16L12 17L13 16" strokeLinecap="round"/></svg>`,
+            cat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 5C10 5 9 7 9 7L7 5L5 9C5 9 6 12 6 14C6 17.3137 8.68629 20 12 20C15.3137 20 18 17.3137 18 14C18 12 19 9 19 9L17 5L15 7C15 7 14 5 12 5Z"/><path d="M9 14L8 15" strokeLinecap="round"/><path d="M15 14L16 15" strokeLinecap="round"/><circle cx="10.5" cy="13" r="0.5" fill="currentColor"/><circle cx="13.5" cy="13" r="0.5" fill="currentColor"/><path d="M11.5 16C11.5 16 12 16.5 12.5 16" strokeLinecap="round"/></svg>`,
+            bear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 6C7 6 5 4 4 6C3 8 5 9 5 9" strokeLinecap="round"/><path d="M17 6C17 6 19 4 20 6C21 8 19 9 19 9" strokeLinecap="round"/><circle cx="12" cy="13" r="8"/><circle cx="10" cy="11" r="1" fill="currentColor"/><circle cx="14" cy="11" r="1" fill="currentColor"/><ellipse cx="12" cy="15" rx="2.5" ry="1.5"/><circle cx="12" cy="14.5" r="0.5" fill="currentColor"/></svg>`,
+            star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
+            heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/><path d="M18 6L19 5" strokeLinecap="round"/><path d="M6 6L5 5" strokeLinecap="round"/></svg>`
+        };
 
-        // --- UTILS ---
-        function randomItem(arr) {
-            return arr[Math.floor(Math.random() * arr.length)];
+        const STORAGE_KEY = 'doodle_jar_data_2025';
+
+        // --- State Management ---
+        let appState = {
+            questions: [],
+            notes: [],
+            editingNoteId: null,
+            isMusicPlaying: false
+        };
+
+        // --- DOM Elements ---
+        const bgm = document.getElementById('bgm');
+        const sfx = document.getElementById('sfx');
+        const musicBtn = document.getElementById('music-btn');
+        const musicIcon = document.getElementById('music-icon');
+        const jarContainer = document.getElementById('jar-container');
+        const jarStarsContainer = document.getElementById('jar-stars');
+        const starsCountEl = document.getElementById('stars-count');
+        const hintText = document.getElementById('hint-text');
+        const wallContainer = document.getElementById('wall-container');
+        const emptyWallMsg = document.getElementById('empty-wall-msg');
+        const modal = document.getElementById('modal');
+        const modalContent = document.getElementById('modal-content');
+        const modalQuestion = document.getElementById('modal-question');
+        const modalInput = document.getElementById('modal-input');
+        const modalCancel = document.getElementById('modal-cancel');
+        const modalSubmit = document.getElementById('modal-submit');
+
+        // --- Helper Functions ---
+        function getThemeForCount(count) {
+            if (count <= 10) return { paper: 'bg-green-100', ink: 'text-green-900', accent: 'bg-green-500' };
+            if (count <= 20) return { paper: 'bg-rose-100', ink: 'text-rose-900', accent: 'bg-rose-500' };
+            if (count <= 30) return { paper: 'bg-blue-100', ink: 'text-blue-900', accent: 'bg-blue-500' };
+            return { paper: 'bg-yellow-100', ink: 'text-gray-900', accent: 'bg-yellow-500' };
         }
 
-        function getStampSVG(type) {
-            const commonProps = 'stroke="currentColor" stroke-width="1.5" fill="none" viewBox="0 0 24 24" class="w-12 h-12"';
-            switch (type) {
-                case 'cat':
-                    return `<svg ${commonProps}><path d="M12 5C10 5 9 7 9 7L7 5L5 9C5 9 6 12 6 14C6 17.3137 8.68629 20 12 20C15.3137 20 18 17.3137 18 14C18 12 19 9 19 9L17 5L15 7C15 7 14 5 12 5Z" /><path d="M9 14L8 15" stroke-linecap="round" /><path d="M15 14L16 15" stroke-linecap="round" /><circle cx="10.5" cy="13" r="0.5" fill="currentColor" /><circle cx="13.5" cy="13" r="0.5" fill="currentColor" /><path d="M11.5 16C11.5 16 12 16.5 12.5 16" stroke-linecap="round" /></svg>`;
-                case 'bear':
-                    return `<svg ${commonProps}><path d="M7 6C7 6 5 4 4 6C3 8 5 9 5 9" stroke-linecap="round" /><path d="M17 6C17 6 19 4 20 6C21 8 19 9 19 9" stroke-linecap="round" /><circle cx="12" cy="13" r="8" /><circle cx="10" cy="11" r="1" fill="currentColor" /><circle cx="14" cy="11" r="1" fill="currentColor" /><ellipse cx="12" cy="15" rx="2.5" ry="1.5" /><circle cx="12" cy="14.5" r="0.5" fill="currentColor" /></svg>`;
-                case 'star':
-                    return `<svg ${commonProps}><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" /><circle cx="12" cy="12" r="1" fill="currentColor" /></svg>`;
-                case 'heart':
-                    return `<svg ${commonProps}><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /><path d="M18 6L19 5" stroke-linecap="round" /><path d="M6 6L5 5" stroke-linecap="round" /></svg>`;
-                case 'rabbit':
-                default:
-                    return `<svg ${commonProps}><circle cx="12" cy="15" r="5" /><path d="M9 11C9 11 7 5 9 3C11 1 11 5 11 8" stroke-linecap="round" /><path d="M15 11C15 11 17 5 15 3C13 1 13 5 13 8" stroke-linecap="round" /><circle cx="10.5" cy="14" r="0.5" fill="currentColor" /><circle cx="13.5" cy="14" r="0.5" fill="currentColor" /><path d="M11 16L12 17L13 16" stroke-linecap="round" /></svg>`;
+        function loadState() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                appState.questions = parsed.questions || [];
+                appState.notes = parsed.notes || [];
+            } else {
+                appState.questions = [...INITIAL_QUESTIONS];
+                appState.notes = [];
             }
         }
 
-        // --- INIT STARS ---
-        // Create 20 visual stars initially (max visual limit)
-        function renderJarStars() {
-            jarStarsContainer.innerHTML = '';
-            const count = questions.length;
-            const visibleCount = Math.min(count, 20); // Cap visual stars at 20
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                questions: appState.questions,
+                notes: appState.notes
+            }));
+        }
 
-            for (let i = 0; i < visibleCount; i++) {
+        // --- Render Functions ---
+        function renderStars() {
+            const count = appState.questions.length;
+            starsCountEl.textContent = count;
+            
+            if (count === 0) {
+                hintText.textContent = "🎉 瓶子空了！新年快乐！";
+            } else {
+                hintText.textContent = "✨ 点击瓶子里的星星填写年度回顾便签吧~";
+            }
+
+            // Simple diffing: clear and rebuild for simplicity
+            jarStarsContainer.innerHTML = '';
+            
+            const colors = ['#fde047', '#bef264', '#fcd34d', '#86efac', '#93c5fd'];
+            
+            // Limit rendered stars to 40 or count to avoid performance issues if list grows
+            const starCountToRender = Math.min(count, 40);
+
+            for(let i=0; i<starCountToRender; i++) {
                 const star = document.createElement('div');
                 star.className = 'absolute star-float';
                 
-                // Random properties
-                const x = Math.random() * 140 + 20; // 20 to 160 width
-                const y = Math.random() * 120 + 60; // 60 to 180 height
+                // Random positioning
+                const x = Math.random() * 90 + 40; // Approx range inside jar
+                const y = Math.random() * 160 + 20;
                 const scale = 0.6 + Math.random() * 0.4;
                 const rotation = Math.random() * 360;
                 const delay = Math.random() * 2;
-                const color = randomItem(STAR_COLORS);
-
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
                 star.style.left = `${x}px`;
                 star.style.top = `${y}px`;
-                star.style.setProperty('--r', `${rotation}deg`);
+                star.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
                 star.style.animationDelay = `${delay}s`;
-                
-                // SVG Content
+                star.style.setProperty('--r', `${rotation}deg`);
+
                 star.innerHTML = `
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="${color}" stroke="#4b5563" stroke-width="1.5" stroke-linejoin="round" class="doodle-filter" style="transform: scale(${scale})">
+                    <svg width="24" height="24" viewBox="0 0 24 24" stroke="#4b5563" stroke-width="1.5" stroke-linejoin="round" fill="${color}" style="filter: url(#squiggle)">
                         <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
                     </svg>
                 `;
-                
                 jarStarsContainer.appendChild(star);
             }
         }
 
-        // --- MODAL LOGIC ---
-        function openModal() {
-            if (questions.length === 0 || isModalOpen) return;
+        function renderWall() {
+            // Remove existing notes but keep empty message
+            const notes = wallContainer.querySelectorAll('.note-item');
+            notes.forEach(n => n.remove());
 
-            // Pick first question (simulate popping from stack)
-            currentQuestion = questions[0];
-            
-            modalQuestionEl.textContent = currentQuestion;
-            modalInput.value = '';
-            checkInput(); // Reset button state
-            
-            modalEl.classList.remove('hidden');
-            
-            // Animation loop for entry
-            requestAnimationFrame(() => {
-                modalBackdrop.classList.remove('opacity-0');
-                modalContent.classList.remove('scale-90', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
+            if (appState.notes.length === 0) {
+                emptyWallMsg.classList.remove('hidden');
+                return;
+            } else {
+                emptyWallMsg.classList.add('hidden');
+            }
+
+            appState.notes.forEach(note => {
+                const noteEl = document.createElement('div');
+                noteEl.className = `note-item relative w-64 h-64 ${note.theme.paper} shadow-sm p-6 flex flex-col items-center justify-center text-center overflow-hidden shrink-0 mb-5 cursor-pointer hover:scale-105 hover:rotate-0 transition-all duration-300 animate-pop-in`;
+                noteEl.style.borderRadius = '2px 2px 15px 2px';
+                noteEl.style.filter = 'url(#squiggle)';
+                noteEl.style.transform = `rotate(${note.rotation}deg)`;
+                noteEl.style.setProperty('--r', `${note.rotation}deg`);
+                noteEl.title = "点击修改便签";
+                
+                noteEl.onclick = () => openModalForEdit(note);
+
+                // Stamp SVG
+                const stampSvg = STAMP_SVGS[note.stamp];
+
+                noteEl.innerHTML = `
+                    <!-- Tape -->
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/40 transform -rotate-1 shadow-sm"></div>
+                    
+                    <!-- Content -->
+                    <div class="flex-1 flex flex-col justify-center gap-3 w-full pointer-events-none">
+                        <p class="text-sm text-gray-500 font-hand leading-tight line-clamp-3 italic">"${note.question}"</p>
+                        <div class="w-full h-px bg-gray-400/20 my-1"></div>
+                        <p class="text-xl font-hand font-bold leading-tight break-words ${note.theme.ink}">${note.answer}</p>
+                    </div>
+
+                    <!-- Stamp -->
+                    <div class="absolute bottom-3 right-3 text-red-500/70 pointer-events-none transform rotate-12 opacity-80 stamp-anim">
+                        <div class="relative w-12 h-12">
+                            ${stampSvg}
+                            <div class="absolute inset-0 rounded-full border-2 border-dashed border-current opacity-50 scale-125"></div>
+                        </div>
+                    </div>
+                `;
+                wallContainer.appendChild(noteEl);
             });
+        }
+
+        // --- Actions ---
+        function toggleMusic() {
+            if (bgm.paused) {
+                bgm.play().then(() => {
+                    appState.isMusicPlaying = true;
+                    musicIcon.textContent = '🎵';
+                }).catch(e => console.log("Audio play failed:", e));
+            } else {
+                bgm.pause();
+                appState.isMusicPlaying = false;
+                musicIcon.textContent = '🔇';
+            }
+        }
+
+        function playSfx() {
+            sfx.currentTime = 0;
+            sfx.play().catch(e => console.error("SFX error", e));
+        }
+
+        function triggerConfetti() {
+            if (window.confetti) {
+                const duration = 2000;
+                const end = Date.now() + duration;
+
+                (function frame() {
+                    window.confetti({
+                        particleCount: 5,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#a786ff', '#fd8bbc', '#eca184', '#f8deb1']
+                    });
+                    window.confetti({
+                        particleCount: 5,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#a786ff', '#fd8bbc', '#eca184', '#f8deb1']
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+            }
+        }
+
+        // --- Modal Logic ---
+        function openModalForNew() {
+            if (appState.questions.length === 0) return;
             
-            // Focus input after transition
+            playSfx();
+            appState.editingNoteId = null;
+            
+            const question = appState.questions[0];
+            const theme = getThemeForCount(appState.questions.length);
+            
+            setupModalUI(question, '', theme, 'Pin It');
+        }
+
+        function openModalForEdit(note) {
+            appState.editingNoteId = note.id;
+            setupModalUI(note.question, note.answer, note.theme, 'Update');
+        }
+
+        function setupModalUI(question, answer, theme, btnText) {
+            modalQuestion.textContent = question;
+            modalQuestion.className = `text-2xl font-bold leading-relaxed min-h-[4rem] ${theme.ink}`;
+            
+            modalInput.value = answer;
+            modalInput.className = `w-full bg-transparent border-b-2 border-gray-400 focus:border-gray-600 outline-none text-xl text-center pb-1 font-hand placeholder:text-gray-400/70 ${theme.ink}`;
+            
+            // Update Modal Background Theme
+            // Remove old theme classes first
+            modalContent.classList.remove('bg-green-100', 'bg-rose-100', 'bg-blue-100', 'bg-yellow-100');
+            modalContent.classList.add(theme.paper);
+            
+            modalSubmit.textContent = btnText;
+            updateSubmitButton();
+
+            modal.classList.remove('hidden');
             setTimeout(() => modalInput.focus(), 100);
-            
-            isModalOpen = true;
         }
 
         function closeModal() {
-            modalBackdrop.classList.add('opacity-0');
-            modalContent.classList.remove('scale-100', 'opacity-100');
-            modalContent.classList.add('scale-90', 'opacity-0');
-            
-            setTimeout(() => {
-                modalEl.classList.add('hidden');
-                isModalOpen = false;
-                currentQuestion = null;
-            }, 300);
+            modal.classList.add('hidden');
         }
 
-        function checkInput() {
-            const hasText = modalInput.value.trim().length > 0;
-            btnPin.disabled = !hasText;
-            if (hasText) {
-                btnPin.classList.remove('bg-gray-100', 'text-gray-400', 'border-gray-300', 'cursor-not-allowed');
-                btnPin.classList.add('bg-white', 'text-gray-800', 'shadow-md', 'hover:bg-green-50', 'border-gray-700');
+        function handleSubmit() {
+            const text = modalInput.value.trim();
+            if (!text) return;
+
+            if (appState.editingNoteId) {
+                // Edit existing
+                const noteIndex = appState.notes.findIndex(n => n.id === appState.editingNoteId);
+                if (noteIndex !== -1) {
+                    appState.notes[noteIndex].answer = text;
+                }
             } else {
-                btnPin.classList.add('bg-gray-100', 'text-gray-400', 'border-gray-300', 'cursor-not-allowed');
-                btnPin.classList.remove('bg-white', 'text-gray-800', 'shadow-md', 'hover:bg-green-50', 'border-gray-700');
+                // New Note
+                const question = appState.questions[0];
+                const theme = getThemeForCount(appState.questions.length);
+                
+                const newNote = {
+                    id: Date.now().toString(),
+                    question: question,
+                    answer: text,
+                    rotation: (Math.random() * 6) - 3,
+                    stamp: STAMP_TYPES[Math.floor(Math.random() * STAMP_TYPES.length)],
+                    theme: theme,
+                    timestamp: Date.now()
+                };
+                
+                appState.notes.unshift(newNote); // Add to top
+                appState.questions.shift(); // Remove used question
+                
+                // Check Milestones
+                const remaining = appState.questions.length;
+                if ([30, 20, 10, 0].includes(remaining)) {
+                    triggerConfetti();
+                }
             }
-        }
 
-        function handlePin() {
-            const answer = modalInput.value.trim();
-            if (!answer) return;
-
-            // Remove question from list
-            questions.shift();
-            
-            // Update Jar
-            countEl.textContent = questions.length;
-            renderJarStars(); // Re-render to remove one star visually (if < 20)
-
-            // Update Header if empty
-            if (questions.length === 0) {
-                headerSubtitle.innerHTML = '<span class="text-green-600 font-bold">🎉 2025 年快乐！ 🎉</span>';
-                countEl.parentElement.classList.add('animate-bounce');
-            }
-
-            // Create Note
-            const noteData = {
-                id: Date.now(),
-                question: currentQuestion,
-                answer: answer,
-                rotation: (Math.random() * 6) - 3,
-                color: randomItem(COLORS),
-                stamp: randomItem(STAMPS)
-            };
-            
-            addNoteToWall(noteData);
+            saveState();
+            renderStars(); // Update stars count
+            renderWall(); // Update wall
             closeModal();
         }
 
-        function addNoteToWall(data) {
-            emptyWallMsg.classList.add('hidden');
-            
-            const note = document.createElement('div');
-            note.className = `relative w-64 h-64 ${data.color} shadow-sm p-6 flex flex-col items-center justify-center text-center overflow-hidden shrink-0 animate-pop-in doodle-filter`;
-            note.style.borderRadius = '2px 2px 15px 2px';
-            note.style.transform = `rotate(${data.rotation}deg)`; // Initial rotation for static state (animation overrides this briefly)
-            // Note: animate-pop-in uses scale/opacity. We can set the final rotation in the element's style, 
-            // but the keyframe animation transforms might conflict. 
-            // Better approach: wrap content or use `animation-fill-mode`.
-            // Ideally, we just apply the rotation to the wrapper or modify the keyframe dynamically. 
-            // For simplicity, let's just let it pop in, and set the final rotation via style which applies after animation if we structured it right, 
-            // OR simpler: don't animate rotation in keyframe, just scale/opacity.
-            
-            // To ensure rotation sticks, we apply it to the element directly.
-            // The keyframe `popIn` only touches scale/opacity. The `transform` in style might be overwritten by animation `transform`.
-            // Workaround: Animate a wrapper, or use specific property transition. 
-            // Let's rely on standard CSS transition for entry if possible, or just accept that during animation it's 0deg.
-            // Actually, we can just set `transform: rotate(...) scale(1)` in the final state, but animation makes that hard.
-            // Let's just use a simple transition class instead of keyframe for the entry to keep rotation.
-            note.classList.remove('animate-pop-in');
-            note.style.opacity = '0';
-            note.style.transform = `scale(0.8) rotate(${data.rotation}deg)`;
-            note.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-
-            note.innerHTML = `
-                <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/40 transform -rotate-1 shadow-sm"></div>
-                <div class="flex-1 flex flex-col justify-center gap-3 w-full">
-                    <p class="text-sm text-gray-500 font-hand leading-tight line-clamp-3 italic">"${data.question}"</p>
-                    <div class="w-full h-px bg-gray-400/20 my-1"></div>
-                    <p class="text-xl text-gray-800 font-hand font-bold leading-tight break-words">${data.answer}</p>
-                </div>
-                <!-- Stamp -->
-                <div class="absolute bottom-3 right-3 text-red-500/70 pointer-events-none stamp-appear">
-                    <div class="relative">
-                        ${getStampSVG(data.stamp)}
-                        <div class="absolute inset-0 rounded-full border-2 border-dashed border-current opacity-50 scale-125"></div>
-                    </div>
-                </div>
-            `;
-
-            // Insert at top
-            wallEl.insertBefore(note, wallEl.firstChild);
-
-            // Trigger animation next frame
-            requestAnimationFrame(() => {
-                note.style.opacity = '1';
-                note.style.transform = `scale(1) rotate(${data.rotation}deg)`;
-            });
+        function updateSubmitButton() {
+            const hasText = modalInput.value.trim().length > 0;
+            modalSubmit.disabled = !hasText;
+            if (hasText) {
+                modalSubmit.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
+                modalSubmit.classList.add('bg-white', 'text-gray-800', 'shadow-md', 'cursor-pointer');
+            } else {
+                modalSubmit.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
+                modalSubmit.classList.remove('bg-white', 'text-gray-800', 'shadow-md', 'cursor-pointer');
+            }
         }
 
-        // --- EVENT LISTENERS ---
-        jarEl.addEventListener('click', openModal);
+        // --- Event Listeners ---
+        musicBtn.addEventListener('click', toggleMusic);
+        jarContainer.addEventListener('click', openModalForNew);
+        modalCancel.addEventListener('click', closeModal);
+        modalSubmit.addEventListener('click', handleSubmit);
         
-        modalBackdrop.addEventListener('click', closeModal);
-        
-        modalInput.addEventListener('input', checkInput);
-        
+        modalInput.addEventListener('input', updateSubmitButton);
         modalInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !btnPin.disabled) {
-                handlePin();
-            }
+            if (e.key === 'Enter') handleSubmit();
         });
 
-        btnPin.addEventListener('click', handlePin);
-
-        // --- INITIAL RENDER ---
-        renderJarStars();
-        countEl.textContent = questions.length;
+        // Initialize
+        loadState();
+        renderStars();
+        renderWall();
 
     </script>
 </body>
