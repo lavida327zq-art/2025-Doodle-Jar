@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>2025 年度回顾</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
     <style>
       body {
         font-family: 'Patrick Hand', 'Ma Shan Zheng', cursive, sans-serif;
@@ -29,19 +35,619 @@
         scrollbar-width: none;
       }
     </style>
-  <script type="importmap">
+
+    <!-- Import Map -->
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "framer-motion": "https://esm.sh/framer-motion@10.16.4",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "framer-motion": "https://esm.sh/framer-motion@^12.23.26"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-</head>
+    
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Process Env Polyfill -->
+    <script>
+      window.process = {
+        env: {
+          API_KEY: '' // Enter your Gemini API Key here if desired
+        }
+      };
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+
+    <!-- Main Application Script -->
+    <script type="text/babel" data-type="module" data-presets="typescript,react">
+      import React, { useState, useEffect, useMemo } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { motion, AnimatePresence } from 'framer-motion';
+      import { GoogleGenAI } from '@google/genai';
+
+      // --- TYPES ---
+      // (Interfaces are handled by Babel's typescript preset, effectively stripping them at runtime)
+      type StampType = 'rabbit' | 'cat' | 'bear' | 'star' | 'heart';
+      type NoteColor = 'bg-yellow-100' | 'bg-blue-100' | 'bg-rose-100' | 'bg-green-100' | 'bg-orange-100';
+
+      interface StarData {
+        id: string;
+        x: number;
+        y: number;
+        scale: number;
+        rotation: number;
+        delay: number;
+        color: string;
+      }
+
+      interface PinnedNoteData {
+        id: string;
+        question: string;
+        answer: string;
+        rotation: number;
+        color: NoteColor;
+        stamp: StampType;
+      }
+
+      // --- DATA ---
+      const INITIAL_QUESTIONS = [
+        "你今年做了哪些之前从未做过的事？",
+        "你有没有遵守年初时和自己许下的约定？",
+        "你身边有人生孩子了吗？",
+        "你身边有人去世了吗？",
+        "你去了哪些城市/州/国家？",
+        "明年你想要获得哪些你今年没有的东西？",
+        "今年的哪个或哪些日子会铭刻在你的记忆中，为什么？",
+        "你今年最大的成就是什么？",
+        "你今年最大的失败是什么？",
+        "你今年还遇到过哪些困难？"
+      ];
+
+      // --- SERVICES ---
+      const getGeminiClient = () => {
+        const apiKey = process.env.API_KEY;
+        if (!apiKey) {
+          // console.warn("API_KEY is not set in process.env");
+          return null;
+        }
+        return new GoogleGenAI({ apiKey });
+      };
+
+      const generateReflectiveQuestion = async (): Promise<string> => {
+        const ai = getGeminiClient();
+        if (!ai) {
+          const fallbacks = [
+            "What was the most unexpected joy of 2024?",
+            "Who made you smile the most this year?",
+            "What is a habit you want to keep in 2025?",
+            "Describe your favorite quiet moment from last year.",
+            "What was the biggest risk you took?"
+          ];
+          return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        }
+
+        try {
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: "Generate a single, short, reflective question for a 'Year in Review' journal. It should be warm, nostalgic, and open-ended. Return ONLY the question text, no quotes.",
+          });
+          
+          return response.text.trim() || "What is your hope for tomorrow?";
+        } catch (error) {
+          console.error("Failed to generate question:", error);
+          return "What made you feel grateful today?";
+        }
+      };
+
+      // --- COMPONENTS ---
+
+      // 1. SvgFilters
+      const SvgFilters: React.FC = () => (
+        <svg className="absolute w-0 h-0 pointer-events-none">
+          <defs>
+            <filter id="squiggle">
+              <feTurbulence 
+                type="fractalNoise" 
+                baseFrequency="0.02" 
+                numOctaves="3" 
+                result="noise" 
+              />
+              <feDisplacementMap 
+                in="SourceGraphic" 
+                in2="noise" 
+                scale="2" 
+              />
+            </filter>
+            <filter id="pencil-texture">
+              <feTurbulence 
+                type="fractalNoise" 
+                baseFrequency="0.5" 
+                numOctaves="4" 
+                stitchTiles="stitch"
+              />
+              <feColorMatrix type="saturate" values="0" />
+              <feComponentTransfer>
+                <feFuncA type="table" tableValues="0 0.5" />
+              </feComponentTransfer>
+              <feComposite operator="in" in2="SourceGraphic" />
+            </filter>
+          </defs>
+        </svg>
+      );
+
+      // 2. Stamps
+      interface StampProps {
+        type: StampType;
+        className?: string;
+      }
+
+      const Stamp: React.FC<StampProps> = ({ type, className = "" }) => {
+        const commonProps = {
+          className,
+          stroke: "currentColor",
+          strokeWidth: "1.5",
+          fill: "none",
+          viewBox: "0 0 24 24"
+        };
+
+        switch (type) {
+          case 'cat':
+            return (
+              <svg {...commonProps}>
+                <path d="M12 5C10 5 9 7 9 7L7 5L5 9C5 9 6 12 6 14C6 17.3137 8.68629 20 12 20C15.3137 20 18 17.3137 18 14C18 12 19 9 19 9L17 5L15 7C15 7 14 5 12 5Z" />
+                <path d="M9 14L8 15" strokeLinecap="round" />
+                <path d="M15 14L16 15" strokeLinecap="round" />
+                <circle cx="10.5" cy="13" r="0.5" fill="currentColor" />
+                <circle cx="13.5" cy="13" r="0.5" fill="currentColor" />
+                <path d="M11.5 16C11.5 16 12 16.5 12.5 16" strokeLinecap="round" />
+              </svg>
+            );
+          case 'bear':
+            return (
+              <svg {...commonProps}>
+                <path d="M7 6C7 6 5 4 4 6C3 8 5 9 5 9" strokeLinecap="round" />
+                <path d="M17 6C17 6 19 4 20 6C21 8 19 9 19 9" strokeLinecap="round" />
+                <circle cx="12" cy="13" r="8" />
+                <circle cx="10" cy="11" r="1" fill="currentColor" />
+                <circle cx="14" cy="11" r="1" fill="currentColor" />
+                <ellipse cx="12" cy="15" rx="2.5" ry="1.5" />
+                <circle cx="12" cy="14.5" r="0.5" fill="currentColor" />
+              </svg>
+            );
+          case 'star':
+            return (
+              <svg {...commonProps}>
+                <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" />
+                <circle cx="12" cy="12" r="1" fill="currentColor" />
+              </svg>
+            );
+          case 'heart':
+            return (
+              <svg {...commonProps}>
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                <path d="M18 6L19 5" strokeLinecap="round" />
+                <path d="M6 6L5 5" strokeLinecap="round" />
+              </svg>
+            );
+          case 'rabbit':
+          default:
+            return (
+              <svg {...commonProps}>
+                 <circle cx="12" cy="15" r="5" />
+                 <path d="M9 11C9 11 7 5 9 3C11 1 11 5 11 8" strokeLinecap="round" />
+                 <path d="M15 11C15 11 17 5 15 3C13 1 13 5 13 8" strokeLinecap="round" />
+                 <circle cx="10.5" cy="14" r="0.5" fill="currentColor" />
+                 <circle cx="13.5" cy="14" r="0.5" fill="currentColor" />
+                 <path d="M11 16L12 17L13 16" strokeLinecap="round" />
+              </svg>
+            );
+        }
+      };
+
+      // 3. Jar
+      interface JarProps {
+        stars: StarData[];
+        onJarClick: () => void;
+        isOpen: boolean;
+        remainingCount: number;
+      }
+
+      const Jar: React.FC<JarProps> = ({ stars, onJarClick, isOpen, remainingCount }) => {
+        return (
+          <div 
+            onClick={onJarClick}
+            className="relative w-56 h-72 mx-auto cursor-pointer group select-none transition-transform active:scale-95"
+          >
+            <svg 
+              viewBox="0 0 200 260" 
+              className="w-full h-full drop-shadow-md transition-transform duration-300 group-hover:scale-105"
+              style={{ filter: 'url(#squiggle)' }}
+            >
+              {/* Jar Lid */}
+              <path 
+                d="M50,20 L50,10 L150,10 L150,20 Q160,20 160,30 L160,40 L40,40 L40,30 Q40,20 50,20 Z" 
+                fill="none" 
+                stroke="#4b5563" 
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <line x1="40" y1="25" x2="160" y2="25" stroke="#4b5563" strokeWidth="2" />
+              
+              {/* Jar Body */}
+              <path 
+                d="M45,40 L45,220 Q45,250 75,250 L125,250 Q155,250 155,220 L155,40" 
+                fill="rgba(255, 255, 255, 0.4)" 
+                stroke="#4b5563" 
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              
+              {/* Reflection Lines */}
+              <path d="M140,60 Q145,100 140,140" fill="none" stroke="rgba(75, 85, 99, 0.3)" strokeWidth="2" strokeLinecap="round" />
+              <path d="M55,220 Q50,230 65,235" fill="none" stroke="rgba(75, 85, 99, 0.3)" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+
+            {/* Stars Container */}
+            <div className="absolute inset-0 top-10 left-4 right-4 bottom-4 overflow-hidden pointer-events-none">
+              {stars.map((star) => (
+                <motion.div
+                  key={star.id}
+                  layoutId={`star-${star.id}`}
+                  className="absolute"
+                  initial={{ 
+                    x: star.x, 
+                    y: star.y, 
+                    opacity: 1, 
+                    scale: star.scale, 
+                    rotate: star.rotation 
+                  }}
+                  animate={
+                    !isOpen ? {
+                      y: [star.y - 5, star.y + 5, star.y - 5],
+                      rotate: [star.rotation - 5, star.rotation + 5, star.rotation - 5],
+                    } : {
+                       // Subtle fade if currently opening something
+                    }
+                  }
+                  transition={{
+                    duration: 3 + Math.random() * 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: star.delay
+                  }}
+                >
+                  <svg 
+                    width="24" 
+                    height="24" 
+                    viewBox="0 0 24 24" 
+                    fill={star.color} 
+                    stroke="#4b5563" 
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                    style={{ filter: 'url(#squiggle)' }}
+                  >
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                  </svg>
+                </motion.div>
+              ))}
+            </div>
+            
+            {/* Label on Jar */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+               <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-sm border border-gray-400 rotate-[-2deg]" style={{ filter: 'url(#squiggle)' }}>
+                  <span className="text-2xl font-bold text-gray-700">{remainingCount}</span>
+                  <span className="block text-xs text-gray-500 uppercase tracking-widest">Left</span>
+               </div>
+            </div>
+          </div>
+        );
+      };
+
+      // 4. PinnedNote
+      interface PinnedNoteProps {
+        data: PinnedNoteData;
+      }
+
+      const PinnedNote: React.FC<PinnedNoteProps> = ({ data }) => {
+        return (
+          <motion.div
+            layoutId={`star-${data.id}`}
+            className={`relative w-64 h-64 ${data.color} shadow-sm p-6 flex flex-col items-center justify-center text-center overflow-hidden shrink-0`}
+            style={{
+              borderRadius: '2px 2px 15px 2px',
+              filter: 'url(#squiggle)',
+              rotate: `${data.rotation}deg`, 
+              marginBottom: '20px'
+            }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            {/* Tape/Pin visual */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/40 transform -rotate-1 shadow-sm" />
+
+            {/* Content */}
+            <div className="flex-1 flex flex-col justify-center gap-3 w-full">
+              <p className="text-sm text-gray-500 font-hand leading-tight line-clamp-3 italic">
+                "{data.question}"
+              </p>
+              <div className="w-full h-px bg-gray-400/20 my-1" />
+              <p className="text-xl text-gray-800 font-hand font-bold leading-tight break-words">
+                {data.answer}
+              </p>
+            </div>
+
+            {/* The Stamp Animation */}
+            <motion.div
+              initial={{ scale: 2, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 15, 
+                mass: 1,
+                delay: 0.6 
+              }}
+              className="absolute bottom-3 right-3 text-red-500/70 pointer-events-none transform rotate-12"
+            >
+              <div className="relative">
+                <Stamp type={data.stamp} className="w-12 h-12" />
+                {/* Outer Ring for Stamp effect */}
+                <div className="absolute inset-0 rounded-full border-2 border-dashed border-current opacity-50 scale-125" />
+              </div>
+            </motion.div>
+          </motion.div>
+        );
+      };
+
+      // 5. NoteOverlay
+      interface NoteOverlayProps {
+        selectedStar: StarData | null;
+        currentQuestion: string | null;
+        onClose: () => void;
+        onPin: (answer: string) => void;
+      }
+
+      const NoteOverlay: React.FC<NoteOverlayProps> = ({ selectedStar, currentQuestion, onClose, onPin }) => {
+        const [answer, setAnswer] = useState("");
+
+        useEffect(() => {
+          if (selectedStar) {
+            setAnswer("");
+          }
+        }, [selectedStar]);
+
+        const handlePinClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (!answer.trim()) return;
+          onPin(answer);
+        };
+
+        return (
+          <AnimatePresence>
+            {selectedStar && currentQuestion && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={onClose}
+                  className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
+                />
+                
+                <motion.div
+                  layoutId={`star-${selectedStar.id}`}
+                  className="relative z-10 w-full max-w-sm aspect-square bg-yellow-100 shadow-xl flex flex-col p-8"
+                  style={{ 
+                    borderRadius: '2px 2px 25px 2px',
+                    filter: 'url(#squiggle)',
+                    transformOrigin: 'center'
+                  }}
+                >
+                   {/* Pin / Tape graphic */}
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-8 bg-white/50 transform -rotate-2" style={{ filter: 'url(#squiggle)' }}></div>
+
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex-1 flex flex-col items-center justify-center text-center space-y-6"
+                  >
+                    <div className="relative w-full">
+                      <h2 className="text-2xl text-gray-800 font-bold leading-relaxed min-h-[4rem]">
+                         {currentQuestion}
+                      </h2>
+                    </div>
+
+                    <div className="w-full space-y-2">
+                      <input 
+                        type="text" 
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                        placeholder="Write your thought..."
+                        className="w-full bg-transparent border-b-2 border-gray-400 focus:border-blue-500 outline-none text-xl text-center pb-1 font-hand placeholder:text-gray-400/70"
+                        autoFocus
+                      />
+                    </div>
+                  </motion.div>
+
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="mt-4 text-center"
+                  >
+                     <button 
+                      onClick={handlePinClick}
+                      disabled={!answer.trim()}
+                      className={`text-lg font-bold px-6 py-2 border-2 border-gray-700 rounded-full transition-all transform hover:scale-105 active:scale-95 ${
+                        answer.trim() 
+                          ? 'bg-white text-gray-800 shadow-md hover:bg-green-50' 
+                          : 'bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed'
+                      }`}
+                      style={{ filter: 'url(#squiggle)' }}
+                     >
+                       Pin It
+                     </button>
+                  </motion.div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        );
+      };
+
+      // --- MAIN APP ---
+      const generateVisualStars = (count: number): StarData[] => {
+        const visibleCount = Math.min(count, 20); 
+        const colors = ['#fde047', '#bef264', '#fcd34d', '#86efac', '#93c5fd'];
+        
+        return Array.from({ length: visibleCount }).map((_, i) => ({
+          id: `star-visual-${i}`,
+          x: Math.random() * 140 + 20, 
+          y: Math.random() * 120 + 60,
+          scale: 0.6 + Math.random() * 0.4,
+          rotation: Math.random() * 360,
+          delay: Math.random() * 2,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        }));
+      };
+
+      const getRandomStamp = (): StampType => {
+        const stamps: StampType[] = ['rabbit', 'cat', 'bear', 'star', 'heart'];
+        return stamps[Math.floor(Math.random() * stamps.length)];
+      };
+
+      const getRandomColor = (): NoteColor => {
+        const colors: NoteColor[] = ['bg-yellow-100', 'bg-blue-100', 'bg-rose-100', 'bg-green-100', 'bg-orange-100'];
+        return colors[Math.floor(Math.random() * colors.length)];
+      };
+
+      function App() {
+        const [questions, setQuestions] = useState<string[]>(INITIAL_QUESTIONS);
+        const [pinnedNotes, setPinnedNotes] = useState<PinnedNoteData[]>([]);
+        
+        const [activeStar, setActiveStar] = useState<StarData | null>(null);
+        const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+
+        const visualStars = useMemo(() => generateVisualStars(questions.length), [questions.length]);
+
+        const handleJarClick = () => {
+          if (questions.length === 0 || activeStar) return;
+
+          const nextQuestion = questions[0];
+          
+          const tempStar: StarData = {
+            id: `active-${Date.now()}`,
+            x: 100, 
+            y: 130, 
+            scale: 1,
+            rotation: 0,
+            delay: 0,
+            color: '#fde047'
+          };
+
+          setActiveQuestion(nextQuestion);
+          setActiveStar(tempStar);
+        };
+
+        const handlePin = (answer: string) => {
+          if (!activeStar || !activeQuestion) return;
+
+          const newNote: PinnedNoteData = {
+            id: `note-${Date.now()}`,
+            question: activeQuestion,
+            answer,
+            rotation: (Math.random() * 6) - 3,
+            color: getRandomColor(),
+            stamp: getRandomStamp()
+          };
+
+          setPinnedNotes(prev => [newNote, ...prev]);
+          setQuestions(prev => prev.slice(1));
+          
+          setActiveStar(null);
+          setActiveQuestion(null);
+        };
+
+        const handleClose = () => {
+          setActiveStar(null);
+          setActiveQuestion(null);
+        };
+
+        return (
+          <div className="min-h-screen w-full bg-grid-paper relative overflow-hidden selection:bg-yellow-200 flex flex-col">
+            <SvgFilters />
+            
+            <div className="shrink-0 pt-8 pb-4 flex flex-col items-center justify-center relative z-20 bg-gradient-to-b from-white/80 to-transparent">
+               <div className="text-center mb-6">
+                <h1 className="text-5xl md:text-7xl font-bold text-gray-700 tracking-wide rotate-[-2deg]" style={{ filter: 'url(#squiggle)' }}>
+                  2025 年度回顾
+                </h1>
+                {questions.length === 0 ? (
+                  <div className="mt-4 text-2xl font-bold text-green-600 animate-bounce">
+                    🎉 2025 年快乐！ 🎉
+                  </div>
+                ) : (
+                  <p className="mt-2 text-lg text-gray-500 font-hand">
+                    有些日子值得被折叠珍藏
+                  </p>
+                )}
+              </div>
+
+              <div className="relative">
+                <Jar 
+                  stars={visualStars} 
+                  onJarClick={handleJarClick} 
+                  isOpen={!!activeStar} 
+                  remainingCount={questions.length}
+                />
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-48 h-4 bg-gray-300/30 rounded-full blur-sm -z-10" />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar relative z-10 w-full">
+               <div className="max-w-7xl mx-auto px-4 py-8 pb-32">
+                  {pinnedNotes.length === 0 && questions.length > 0 && (
+                    <div className="text-center text-gray-300 text-xl mt-12 font-hand rotate-1">
+                      回忆墙空空如也，点击星星开始记录吧。
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-wrap justify-center gap-6 md:gap-8">
+                    {pinnedNotes.map((note) => (
+                      <PinnedNote key={note.id} data={note} />
+                    ))}
+                  </div>
+               </div>
+            </div>
+
+            <NoteOverlay 
+              selectedStar={activeStar} 
+              currentQuestion={activeQuestion}
+              onClose={handleClose}
+              onPin={handlePin}
+            />
+          </div>
+        );
+      }
+
+      // --- RENDER ---
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    </script>
   </body>
 </html>
